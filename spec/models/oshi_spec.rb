@@ -13,6 +13,19 @@ RSpec.describe Oshi, type: :model do
     expect(described_class.reflect_on_association(:subscriptions).options[:through]).to eq(:subscription_oshis)
   end
 
+  it "exposes activity_oshis and activities without automatic deletion" do
+    oshi = create(:oshi)
+    link = create(:activity_oshi, oshi: oshi)
+    expect(oshi.activity_oshis).to contain_exactly(link)
+    expect(oshi.activities).to contain_exactly(link.activity)
+    [ :activity_oshis, :activities ].each do |name|
+      association = described_class.reflect_on_association(name)
+      expect(association.macro).to eq(:has_many)
+      expect(association.options).not_to have_key(:dependent)
+    end
+    expect(described_class.reflect_on_association(:activities).options[:through]).to eq(:activity_oshis)
+  end
+
   it "belongs to its creator and is accessible from that user" do
     creator = create(:user)
     oshi = create(:oshi, created_by_user: creator)
