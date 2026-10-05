@@ -96,6 +96,9 @@ jobs:
         with:
           bundler-cache: true
 
+      - name: Apply test database migrations
+        run: bin/rails db:migrate
+
       - name: Check Rails autoloading
         run: bin/rails zeitwerk:check
 

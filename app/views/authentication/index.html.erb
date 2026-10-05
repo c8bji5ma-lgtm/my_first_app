@@ -1,0 +1,3 @@
+<h1>認証確認</h1>
+<p>ログイン中: <%= current_user.email %></p>
+<%= button_to "ログアウト", destroy_user_session_path, method: :delete %>
