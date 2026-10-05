@@ -1,6 +1,15 @@
 require "rails_helper"
 
 RSpec.describe User, type: :model do
+  it "has activities without automatic deletion" do
+    association = described_class.reflect_on_association(:activities)
+    expect(association.macro).to eq(:has_many)
+    expect(association.options).not_to have_key(:dependent)
+    user = create(:user)
+    activity = create(:activity, user: user)
+    expect(user.activities).to contain_exactly(activity)
+  end
+
   it "defines the Issue #17 associations without automatic deletion" do
     {
       profile: :has_one,
