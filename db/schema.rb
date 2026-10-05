@@ -10,9 +10,52 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_05_055558) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_05_060004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "oshi_aliases", force: :cascade do |t|
+    t.bigint "oshi_id", null: false
+    t.string "alias_name", limit: 255, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["alias_name"], name: "index_oshi_aliases_on_alias_name"
+    t.index ["oshi_id", "alias_name"], name: "index_oshi_aliases_on_oshi_id_and_alias_name", unique: true
+    t.index ["oshi_id"], name: "index_oshi_aliases_on_oshi_id"
+  end
+
+  create_table "oshis", force: :cascade do |t|
+    t.string "name", limit: 255, null: false
+    t.string "oshi_type", limit: 50, null: false
+    t.string "affiliation", limit: 255
+    t.string "status", limit: 20, default: "pending", null: false
+    t.bigint "created_by_user_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_user_id"], name: "index_oshis_on_created_by_user_id"
+    t.index ["name"], name: "index_oshis_on_name"
+  end
+
+  create_table "profiles", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "display_name", limit: 50, null: false
+    t.text "introduction"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_profiles_on_user_id", unique: true
+  end
+
+  create_table "user_oshis", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "oshi_id", null: false
+    t.string "started_period", limit: 7
+    t.string "ended_period", limit: 7
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["oshi_id"], name: "index_user_oshis_on_oshi_id"
+    t.index ["user_id", "oshi_id"], name: "index_user_oshis_on_user_id_and_oshi_id", unique: true
+    t.index ["user_id"], name: "index_user_oshis_on_user_id"
+  end
 
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
@@ -22,4 +65,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_05_055558) do
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
   end
+
+  add_foreign_key "oshi_aliases", "oshis"
+  add_foreign_key "oshis", "users", column: "created_by_user_id"
+  add_foreign_key "profiles", "users"
+  add_foreign_key "user_oshis", "oshis"
+  add_foreign_key "user_oshis", "users"
 end

@@ -1,6 +1,24 @@
 require "rails_helper"
 
 RSpec.describe User, type: :model do
+  it "defines the Issue #17 associations without automatic deletion" do
+    {
+      profile: :has_one,
+      user_oshis: :has_many,
+      oshis: :has_many,
+      created_oshis: :has_many
+    }.each do |name, macro|
+      association = described_class.reflect_on_association(name)
+      expect(association.macro).to eq(macro)
+      expect(association.options).not_to have_key(:dependent)
+    end
+
+    expect(described_class.reflect_on_association(:oshis).options[:through]).to eq(:user_oshis)
+    creator_association = described_class.reflect_on_association(:created_oshis)
+    expect(creator_association.class_name).to eq("Oshi")
+    expect(creator_association.foreign_key).to eq("created_by_user_id")
+  end
+
   it "accepts valid registration attributes" do
     expect(build(:user)).to be_valid
   end
