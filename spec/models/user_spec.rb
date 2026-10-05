@@ -1,6 +1,15 @@
 require "rails_helper"
 
 RSpec.describe User, type: :model do
+  it "exposes subscriptions without automatic deletion" do
+    user = create(:user)
+    subscription = create(:subscription, user: user)
+    expect(user.subscriptions).to contain_exactly(subscription)
+    association = described_class.reflect_on_association(:subscriptions)
+    expect(association.macro).to eq(:has_many)
+    expect(association.options).not_to have_key(:dependent)
+  end
+
   it "has activities without automatic deletion" do
     association = described_class.reflect_on_association(:activities)
     expect(association.macro).to eq(:has_many)

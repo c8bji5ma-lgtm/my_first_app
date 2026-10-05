@@ -6,6 +6,7 @@ class User < ApplicationRecord
   has_many :oshis, through: :user_oshis
   has_many :created_oshis, class_name: "Oshi", foreign_key: :created_by_user_id
   has_many :activities
+  has_many :subscriptions
 
   validates :admin, inclusion: { in: [ true, false ] }
 end
