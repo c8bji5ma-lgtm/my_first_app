@@ -1,6 +1,18 @@
 require "rails_helper"
 
 RSpec.describe Oshi, type: :model do
+  it "exposes subscription_oshis and subscriptions without automatic deletion" do
+    record = create(:subscription_oshi)
+    expect(record.oshi.subscription_oshis).to contain_exactly(record)
+    expect(record.oshi.subscriptions).to contain_exactly(record.subscription)
+    [ :subscription_oshis, :subscriptions ].each do |name|
+      association = described_class.reflect_on_association(name)
+      expect(association.macro).to eq(:has_many)
+      expect(association.options).not_to have_key(:dependent)
+    end
+    expect(described_class.reflect_on_association(:subscriptions).options[:through]).to eq(:subscription_oshis)
+  end
+
   it "belongs to its creator and is accessible from that user" do
     creator = create(:user)
     oshi = create(:oshi, created_by_user: creator)

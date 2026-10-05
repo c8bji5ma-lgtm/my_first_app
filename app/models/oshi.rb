@@ -8,6 +8,8 @@ class Oshi < ApplicationRecord
   has_many :oshi_aliases
   has_many :user_oshis
   has_many :users, through: :user_oshis
+  has_many :subscription_oshis
+  has_many :subscriptions, through: :subscription_oshis
 
   enum :status, {
     pending: "pending", approved: "approved", rejected: "rejected"
