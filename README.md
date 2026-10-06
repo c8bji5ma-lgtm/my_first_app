@@ -124,4 +124,4 @@ http://localhost:3000
 
 ![画面遷移に関する補足](docs/images/07_画面遷移に関する補足.png)
 
-[Whimsicalで最新の画面設計を確認する](https://whimsical.com/yuki-atarashi/oshilog-67ZWRKGYJbwuuHeTVJXfTW)
+[Whimsicalで画面遷移図を確認する](https://whimsical.com/yuki-atarashi/oshilog-BXfu4fkBrWUUJmT5NJb2Qi)
