@@ -78,7 +78,7 @@ http://localhost:3000
 
 ### ワイヤーフレーム
 
-[Whimsicalで最新の画面設計を確認する](https://whimsical.com/yuki-atarashi/oshilog-67ZWRKGYJbwuuHeTVJXfTW)
+[Whimsicalでワイヤーフレームを確認する](https://whimsical.com/yuki-atarashi/oshilog-kpi-4JZqsPQdZ6TfN7LoLxQJbw)
 
 ## ER図
 
