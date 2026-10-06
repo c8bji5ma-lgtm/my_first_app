@@ -96,8 +96,7 @@ RSpec.describe "Global navigation and feature destinations", type: :request do
     end
 
     {
-      "/activities" => "活動記録一覧",
-      "/activities/new" => "活動記録を登録", "/data" => "推し活データ",
+      "/data" => "推し活データ",
       "/profile/edit" => "プロフィール編集"
     }.each do |path, title|
       it "provides a protected preparation page at #{path}" do
@@ -108,6 +107,18 @@ RSpec.describe "Global navigation and feature destinations", type: :request do
         expect(document.at_css("title").text).to eq("#{title} | OshiLog")
         expect(document.at_css("main").text).to include("準備中")
         expect(document.css("main form")).to be_empty
+      end
+    end
+
+    { "/activities" => "活動記録一覧", "/activities/new" => "活動記録を登録" }.each do |path, title|
+      it "renders the implemented activity page at #{path}" do
+        get path
+
+        expect(response).to have_http_status(:ok)
+        expect(document.at_css("main h1").text).to eq(title)
+        expect(document.at_css("title").text).to eq("#{title} | OshiLog")
+        expect(document.at_css("main").text).not_to include("準備中")
+        expect(document.at_css("main form")).to be_present
       end
     end
 

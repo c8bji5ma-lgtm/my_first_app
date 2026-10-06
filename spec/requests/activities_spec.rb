@@ -1,0 +1,392 @@
+require "rails_helper"
+
+RSpec.describe "Activities", type: :request do
+  let(:user) { create(:user) }
+  let(:other_user) { create(:user) }
+  let!(:oshi) { create(:oshi, :approved) }
+  let!(:second_oshi) { create(:oshi, :rejected) }
+
+  before do
+    create(:user_oshi, user: user, oshi: oshi)
+    create(:user_oshi, user: user, oshi: second_oshi, ended_period: "2025")
+    post user_session_path, params: { user: { email: user.email, password: "password123" } }
+  end
+
+  def activity_for(owner = user, oshis: [ oshi ], **attributes)
+    activity = build(:activity, :without_oshis, user: owner, **attributes)
+    Activities::Save.call(activity: activity, oshi_ids: oshis.map(&:id))
+  end
+
+  def input(**changes)
+    { occurred_on: "2026-10-01", activity_type: "ライブ・イベント", title: "福岡公演", place: "福岡", memo: "感想", amount: "18400", oshi_ids: [ "", oshi.id.to_s ] }.merge(changes)
+  end
+
+  def upload(filename = "image.png")
+    fixture_file_upload(Rails.root.join("spec/fixtures/files", filename), filename == "invalid.txt" ? "text/plain" : "image/png")
+  end
+
+  def document
+    Nokogiri::HTML(response.body)
+  end
+
+  def titles
+    document.css(".activity-list a").map(&:text)
+  end
+
+  describe "index" do
+    it "requires login" do
+      delete destroy_user_session_path
+      get activities_path
+      expect(response).to redirect_to(new_user_session_path)
+    end
+
+    it "lists only owned records grouped by month with stable descending order" do
+      activity_for(title: "古い", occurred_on: "2026-09-30")
+      activity_for(title: "同日早い", created_at: Time.utc(2026, 10, 1, 1))
+      activity_for(title: "同日後1", created_at: Time.utc(2026, 10, 1, 2))
+      activity_for(title: "同日後2", created_at: Time.utc(2026, 10, 1, 2))
+      activity_for(other_user, title: "秘密", occurred_on: "2027-01-01")
+      get activities_path
+      expect(response).to have_http_status(:ok)
+      expect(titles).to eq([ "同日後2", "同日後1", "同日早い", "古い" ])
+      expect(document.css(".activity-month h2").map(&:text)).to eq([ "2026年10月", "2026年9月" ])
+      expect(response.body).not_to include("秘密")
+      expect(document.at_css("a[href='#{new_activity_path}']").text).to eq("記録する")
+    end
+
+    it "combines month, oshi, category, and keyword filters without duplicates" do
+      target = activity_for(title: "探す", oshis: [ oshi, second_oshi ], amount: 3200)
+      activity_for(title: "別月", occurred_on: "2026-09-30")
+      activity_for(title: "別推し", oshis: [ second_oshi ])
+      activity_for(title: "探す別カテゴリ", activity_type: "配信視聴")
+      get activities_path, params: { month: "2026-10", oshi_id: oshi.id.to_s, activity_type: target.activity_type, q: "探す" }
+      expect(titles).to eq([ "探す" ])
+      expect(response.body).to include("3,200円", "10/1", "ライブ・イベント")
+    end
+
+    [ :title, :place, :memo ].each do |field|
+      it "searches #{field} with case-insensitive partial matches" do
+        target = activity_for(**{ field => "Prefix-AbC-suffix" })
+        activity_for(title: "無関係")
+        get activities_path, params: { q: "aBc" }
+        expect(titles).to eq([ target.title ])
+      end
+    end
+
+    [ "%", "_", "\\" ].each do |character|
+      it "escapes LIKE character #{character.inspect}" do
+        target = activity_for(title: "特殊#{character}文字")
+        activity_for(title: "特殊X文字")
+        get activities_path, params: { q: character }
+        expect(titles).to eq([ target.title ])
+      end
+    end
+
+    it "does not search oshi names as keywords" do
+      activity_for(title: "記録")
+      get activities_path, params: { q: oshi.name }
+      expect(titles).to be_empty
+    end
+
+    [ { month: "2026-13" }, { month: "0000-01" }, { month: "2026-1" }, { activity_type: "未知" }, { month: [ "2026-10" ] }, { q: { bad: "value" } }, { activity_type: [ "その他" ] }, { oshi_id: { bad: "id" } } ].each do |filters|
+      it "renders a filter error with 400 for #{filters.inspect}" do
+        activity_for(title: "本人記録")
+        activity_for(other_user, title: "秘密")
+        get activities_path, params: filters
+        expect(response).to have_http_status(:bad_request)
+        expect(document.at_css("[role='alert']")).to be_present
+        expect(titles).to be_empty
+        expect(response.body).not_to include("秘密")
+      end
+    end
+
+    it "rejects an unregistered oshi filter" do
+      unregistered = create(:oshi, :approved)
+      get activities_path, params: { oshi_id: unregistered.id }
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it "accepts empty filters and allows past rejected registered oshis" do
+      activity_for(oshis: [ second_oshi ])
+      get activities_path, params: { month: "", activity_type: "", q: "", oshi_id: second_oshi.id }
+      expect(response).to have_http_status(:ok)
+      expect(titles.size).to eq(1)
+    end
+  end
+
+  describe "new and create" do
+    it "shows only registered choices, fixed categories, and multiple upload inputs" do
+      unregistered = create(:oshi, :approved)
+      get new_activity_path
+      expect(response).to have_http_status(:ok)
+      options = document.css("select[name='activity[oshi_ids][]'] option").map { |option| option["value"] }
+      expect(options).to match_array([ oshi.id.to_s, second_oshi.id.to_s ])
+      expect(options).not_to include(unregistered.id.to_s)
+      expect(document.at_css("select[name='activity[oshi_ids][]']")["multiple"]).to be_present
+      expect(document.at_css("input[type='file']")["multiple"]).to be_present
+      expect(document.css("select[name='activity[activity_type]'] option").map(&:text)).to include(*Activity::ACTIVITY_TYPES)
+    end
+
+    it "guides a user with no registered oshis" do
+      delete destroy_user_session_path
+      post user_session_path, params: { user: { email: other_user.email, password: "password123" } }
+      get new_activity_path
+      expect(response.body).to include("先に推しを登録してください")
+      expect(document.at_css("a[href='#{new_oshi_path}']")).to be_present
+    end
+
+    it "creates for the current user, deduplicates ids, redirects and flashes" do
+      post activities_path, params: { activity: input(user_id: other_user.id, oshi_ids: [ oshi.id.to_s, oshi.id.to_s ]) }
+      expect(response).to have_http_status(:see_other)
+      expect(response).to redirect_to(activities_path)
+      activity = user.activities.last
+      expect(activity.oshi_ids).to eq([ oshi.id ])
+      expect(activity.amount).to eq(18400)
+      expect(other_user.activities).to be_empty
+      follow_redirect!
+      expect(document.at_css("[role='status']").text).to eq("活動記録を登録しました。")
+    end
+
+    it "allows multiple registered oshis including rejected and past oshis" do
+      post activities_path, params: { activity: input(oshi_ids: [ oshi.id.to_s, second_oshi.id.to_s ]) }
+      expect(response).to redirect_to(activities_path)
+      expect(user.activities.last.oshi_ids).to match_array([ oshi.id, second_oshi.id ])
+    end
+
+    it "allows a registered pending oshi and future dates" do
+      pending_oshi = create(:oshi, :pending, created_by_user: user)
+      create(:user_oshi, user: user, oshi: pending_oshi)
+      post activities_path, params: { activity: input(oshi_ids: [ pending_oshi.id.to_s ], occurred_on: "2030-01-01") }
+      expect(response).to redirect_to(activities_path)
+    end
+
+    [ [], [ "" ], nil ].each do |ids|
+      it "rejects empty selection #{ids.inspect}" do
+        expect { post activities_path, params: { activity: input(oshi_ids: ids) } }.not_to change(Activity, :count)
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include("推しを1件以上選択してください")
+      end
+    end
+
+    [ "bad", "0", "-1", "1foo", "1.0", " 1", { id: "1" }, [ "1" ] ].each do |id|
+      it "rejects malformed id #{id.inspect}" do
+        expect { post activities_path, params: { activity: input(oshi_ids: [ id ]) } }.not_to change(Activity, :count)
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+    end
+
+    it "rejects an unexpected selection shape" do
+      post activities_path, params: { activity: input(oshi_ids: { id: oshi.id }) }
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    %i[approved pending rejected].each do |status|
+      it "rejects unregistered #{status} oshis without silently retaining permitted ones" do
+        forbidden = create(:oshi, status, created_by_user: other_user)
+        create(:user_oshi, user: other_user, oshi: forbidden)
+        expect { post activities_path, params: { activity: input(oshi_ids: [ oshi.id.to_s, forbidden.id.to_s ]) } }.not_to change(Activity, :count)
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include("登録済みの推し")
+      end
+    end
+
+    [ { title: "" }, { occurred_on: "2026-02-30" }, { activity_type: "不明" }, { amount: "-1" }, { amount: "1.5" }, { amount: "abc" } ].each do |changes|
+      it "renders scalar validation errors for #{changes.inspect}" do
+        expect { post activities_path, params: { activity: input(**changes) } }.not_to change(Activity, :count)
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(document.at_css(".validation-errors")).to be_present
+      end
+    end
+
+    { "" => nil, "0" => 0 }.each do |value, expected|
+      it "preserves amount #{value.inspect}" do
+        post activities_path, params: { activity: input(amount: value) }
+        expect(user.activities.last.amount).to eq(expected)
+        follow_redirect!
+        expect(response.body).to include(expected.nil? ? "—" : "0円")
+      end
+    end
+
+    it "creates multiple images" do
+      post activities_path, params: { activity: input(images: [ upload, upload ]) }
+      expect(response).to redirect_to(activities_path)
+      expect(user.activities.last.images.count).to eq(2)
+    end
+
+    it "rolls back invalid images" do
+      counts = [ Activity.count, ActivityOshi.count, ActiveStorage::Attachment.count, ActiveStorage::Blob.count ]
+      post activities_path, params: { activity: input(images: [ upload("invalid.txt") ]) }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect([ Activity.count, ActivityOshi.count, ActiveStorage::Attachment.count, ActiveStorage::Blob.count ]).to eq(counts)
+    end
+
+    it "rejects arbitrary signed blob ids" do
+      blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new("not trusted"), filename: "secret.png", content_type: "image/png")
+      post activities_path, params: { activity: input(images: [ blob.signed_id ]) }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(user.activities).to be_empty
+    end
+  end
+
+  describe "show and edit" do
+    it "shows all fields, images, escaped memo, and CRUD navigation" do
+      activity = activity_for(oshis: [ oshi, second_oshi ], title: "公演", place: "福岡", amount: 18400, memo: "1行目\n<script>secret()</script>")
+      activity.images.attach([ upload, upload ])
+      get activity_path(activity)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("2026/10/01", "ライブ・イベント", "公演", oshi.name, second_oshi.name, "福岡", "18,400円")
+      expect(document.at_css(".activity-memo").text).to eq("1行目\n<script>secret()</script>")
+      expect(document.css("main script")).to be_empty
+      expect(document.css(".image-gallery img").map { |img| img["alt"] }).to eq([ "公演の画像 1", "公演の画像 2" ])
+      expect(document.at_css("a[href='#{edit_activity_path(activity)}']")).to be_present
+      form = document.at_css("form[action='#{activity_path(activity)}']")
+      expect(form["data-turbo-confirm"]).to eq("この活動記録を削除しますか？")
+      expect(form.at_css("input[name='_method']")["value"]).to eq("delete")
+      expect(document.at_css("main a[href='#{activities_path}']")).to be_present
+    end
+
+    it "preselects existing oshis and shows persisted images in edit" do
+      activity = activity_for(oshis: [ second_oshi ], title: "既存")
+      activity.images.attach(upload)
+      get edit_activity_path(activity)
+      expect(response).to have_http_status(:ok)
+      expect(document.css("select[name='activity[oshi_ids][]'] option[selected]").map { |option| option["value"] }).to eq([ second_oshi.id.to_s ])
+      expect(document.at_css("input[name='activity[title]']")["value"]).to eq("既存")
+      expect(document.css(".image-gallery img").size).to eq(1)
+      expect(response.body).to include("新しく選択した画像は既存画像に追加されます")
+      expect(document.css("input[type='checkbox']")).to be_empty
+    end
+
+    [ :activity_path, :edit_activity_path ].each do |route|
+      it "returns 404 for another user's #{route}" do
+        get public_send(route, activity_for(other_user))
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+  end
+
+  describe "update" do
+    it "updates scalars and selection, preserves owner, redirects to detail with notice" do
+      activity = activity_for
+      patch activity_path(activity), params: { activity: input(title: "更新", amount: "0", user_id: other_user.id, oshi_ids: [ second_oshi.id.to_s ]) }
+      expect(response).to have_http_status(:see_other)
+      expect(response).to redirect_to(activity_path(activity))
+      expect(activity.reload.title).to eq("更新")
+      expect(activity.user_id).to eq(user.id)
+      expect(activity.oshi_ids).to eq([ second_oshi.id ])
+      follow_redirect!
+      expect(document.at_css("[role='status']").text).to eq("活動記録を更新しました。")
+    end
+
+    it "changes one to multiple and multiple to one" do
+      activity = activity_for
+      patch activity_path(activity), params: { activity: input(oshi_ids: [ oshi.id.to_s, second_oshi.id.to_s ]) }
+      expect(activity.reload.oshi_ids).to match_array([ oshi.id, second_oshi.id ])
+      patch activity_path(activity), params: { activity: input(oshi_ids: [ oshi.id.to_s ]) }
+      expect(activity.reload.oshi_ids).to eq([ oshi.id ])
+    end
+
+    it "rejects zero selection and keeps persisted values" do
+      activity = activity_for(title: "元")
+      patch activity_path(activity), params: { activity: input(title: "失敗", oshi_ids: []) }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(activity.reload.title).to eq("元")
+      expect(activity.oshi_ids).to eq([ oshi.id ])
+    end
+
+    it "rejects forbidden ids and keeps persisted values" do
+      activity = activity_for(title: "元")
+      forbidden = create(:oshi)
+      patch activity_path(activity), params: { activity: input(oshi_ids: [ forbidden.id.to_s ]) }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(activity.reload.title).to eq("元")
+      expect(activity.oshi_ids).to eq([ oshi.id ])
+    end
+
+    it "preserves images without an upload, then appends new images" do
+      activity = activity_for
+      activity.images.attach(upload)
+      original = activity.images.first.blob_id
+      patch activity_path(activity), params: { activity: input(images: [ "" ]) }
+      expect(activity.reload.images.map(&:blob_id)).to eq([ original ])
+      patch activity_path(activity), params: { activity: input(images: [ upload ]) }
+      expect(activity.reload.images.count).to eq(2)
+      expect(activity.images.map(&:blob_id)).to include(original)
+    end
+
+    it "rolls back invalid new images, scalar and oshi changes and only displays persisted images" do
+      activity = activity_for(title: "元")
+      activity.images.attach(upload)
+      original = activity.images.first.blob_id
+      counts = [ ActiveStorage::Attachment.count, ActiveStorage::Blob.count ]
+      patch activity_path(activity), params: { activity: input(title: "失敗", oshi_ids: [ second_oshi.id.to_s ], images: [ upload("invalid.txt") ]) }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(document.css(".image-gallery img").size).to eq(1)
+      expect(document.at_css("input[name='activity[title]']")["value"]).to eq("失敗")
+      expect(activity.reload.title).to eq("元")
+      expect(activity.oshi_ids).to eq([ oshi.id ])
+      expect(activity.images.map(&:blob_id)).to eq([ original ])
+      expect([ ActiveStorage::Attachment.count, ActiveStorage::Blob.count ]).to eq(counts)
+    end
+
+    it "keeps persisted data when a scalar is invalid" do
+      activity = activity_for(title: "元")
+      patch activity_path(activity), params: { activity: input(title: "", oshi_ids: [ second_oshi.id.to_s ]) }
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(activity.reload.title).to eq("元")
+      expect(activity.oshi_ids).to eq([ oshi.id ])
+    end
+
+    it "returns 404 for another user's activity" do
+      activity = activity_for(other_user, title: "秘密")
+      patch activity_path(activity), params: { activity: input }
+      expect(response).to have_http_status(:not_found)
+      expect(activity.reload.title).to eq("秘密")
+    end
+  end
+
+  describe "destroy" do
+    it "deletes the owned parent, all links and attachments, leaving oshis and other records" do
+      activity = activity_for(oshis: [ oshi, second_oshi ])
+      another = activity_for(other_user)
+      activity.images.attach(upload)
+      attachment_id = activity.images.first.id
+      delete activity_path(activity)
+      expect(response).to have_http_status(:see_other)
+      expect(response).to redirect_to(activities_path)
+      expect(Activity.exists?(activity.id)).to be(false)
+      expect(ActivityOshi.where(activity_id: activity.id)).to be_empty
+      expect(ActiveStorage::Attachment.exists?(attachment_id)).to be(false)
+      expect(Activity.exists?(another.id)).to be(true)
+      expect(user.user_oshis.count).to eq(2)
+      expect(Oshi.where(id: [ oshi.id, second_oshi.id ]).count).to eq(2)
+      follow_redirect!
+      expect(document.at_css("[role='status']").text).to eq("活動記録を削除しました。")
+    end
+
+    it "rejects another user's deletion" do
+      activity = activity_for(other_user)
+      delete activity_path(activity)
+      expect(response).to have_http_status(:not_found)
+      expect(Activity.exists?(activity.id)).to be(true)
+    end
+
+    it "rolls back link deletion if destroying the parent fails" do
+      activity = activity_for(oshis: [ oshi, second_oshi ])
+      link_ids = activity.activity_oshis.pluck(:id)
+      activity.images.attach(upload)
+      attachment_id = activity.images.first.id
+      allow_any_instance_of(Activity).to receive(:destroy!).and_wrap_original do |original|
+        original.call
+        raise ActiveRecord::RecordNotDestroyed
+      end
+      delete activity_path(activity)
+      expect(response).to redirect_to(activity_path(activity))
+      expect(Activity.exists?(activity.id)).to be(true)
+      expect(activity.reload.activity_oshis.pluck(:id)).to match_array(link_ids)
+      expect(ActiveStorage::Attachment.exists?(attachment_id)).to be(true)
+      follow_redirect!
+      expect(document.at_css("[role='alert']").text).to eq("活動記録を削除できませんでした。")
+    end
+  end
+end

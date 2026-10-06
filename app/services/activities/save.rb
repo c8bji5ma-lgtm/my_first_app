@@ -2,8 +2,9 @@ module Activities
   class Save
     # Pass a new or unchanged persisted Activity and scalar attributes separately.
     # Omitted oshi_ids preserves existing links; [] explicitly requests no links.
+    # new_images appends uploads under the parent lock; omitted or empty retains images.
     # Returns the saved Activity; failures raise and roll back all database changes.
-    def self.call(activity:, attributes: {}, oshi_ids: nil)
+    def self.call(activity:, attributes: {}, oshi_ids: nil, new_images: [])
       Activity.transaction do
         activity.lock! if activity.persisted?
         activity.activity_oshis.reload if activity.persisted?
@@ -15,6 +16,8 @@ module Activities
         end
 
         activity.assign_attributes(attributes)
+        uploads = Array(new_images).compact_blank
+        activity.images = activity.images.blobs.to_a + uploads if uploads.any?
         if ids.empty?
           activity.errors.add(:activity_oshis, "must include at least one oshi")
           raise ActiveRecord::RecordInvalid, activity
