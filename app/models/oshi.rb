@@ -17,6 +17,17 @@ class Oshi < ApplicationRecord
     pending: "pending", approved: "approved", rejected: "rejected"
   }, validate: true
 
+  scope :visible_to, ->(user) { approved.or(pending.where(created_by_user_id: user.id)) }
+
+  def self.search(query)
+    return none if query.blank?
+
+    pattern = "%#{sanitize_sql_like(query)}%"
+    left_outer_joins(:oshi_aliases)
+      .where("oshis.name ILIKE :pattern OR oshi_aliases.alias_name ILIKE :pattern", pattern: pattern)
+      .distinct
+  end
+
   validates :name, presence: true, length: { maximum: 255 }
   validates :oshi_type, presence: true, length: { maximum: 50 },
     inclusion: { in: OSHI_TYPES }

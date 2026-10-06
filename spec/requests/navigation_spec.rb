@@ -96,7 +96,7 @@ RSpec.describe "Global navigation and feature destinations", type: :request do
     end
 
     {
-      "/oshis" => "推し一覧", "/activities" => "活動記録一覧",
+      "/activities" => "活動記録一覧",
       "/activities/new" => "活動記録を登録", "/data" => "推し活データ",
       "/profile/edit" => "プロフィール編集"
     }.each do |path, title|
@@ -117,7 +117,7 @@ RSpec.describe "Global navigation and feature destinations", type: :request do
       expect(document.at_css("main a[href='#{new_activity_path}']").text).to eq("記録する")
     end
 
-    it "uses the route's fixed feature even when query parameters try to override it" do
+    it "does not let query parameters replace the oshi list content" do
       get oshis_path, params: { feature: "<script>alert(1)</script>", title: "偽の画面" }
 
       expect(response).to have_http_status(:ok)

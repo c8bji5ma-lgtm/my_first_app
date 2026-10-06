@@ -1,0 +1,19 @@
+<% content_for :title, "推し一覧 | OshiLog" %>
+<h1>推し一覧</h1>
+<p><%= link_to "推しを登録", new_oshi_path, class: "button" %></p>
+<% if @user_oshis.empty? %>
+  <p>登録している推しはありません。</p>
+<% else %>
+  <div class="cards">
+    <% @user_oshis.each do |user_oshi| %>
+      <section class="card">
+        <h2><%= user_oshi.oshi.name %></h2>
+        <p>推し始め：<%= user_oshi.started_period.presence || "未設定" %></p>
+        <div class="actions">
+          <%= link_to "詳細", user_oshi_path(user_oshi), aria: { label: "#{user_oshi.oshi.name}の詳細" } %>
+          <%= link_to "編集", edit_user_oshi_path(user_oshi), aria: { label: "#{user_oshi.oshi.name}を編集" } %>
+        </div>
+      </section>
+    <% end %>
+  </div>
+<% end %>

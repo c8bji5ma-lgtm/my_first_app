@@ -1,0 +1,31 @@
+<% content_for :title, "推し編集 | OshiLog" %>
+<h1>推し編集</h1>
+<section class="card">
+  <h2>共通推し情報（読み取り専用）</h2>
+  <dl class="detail-rows">
+    <dt>推し名</dt><dd><%= @user_oshi.oshi.name %></dd>
+    <dt>種別</dt><dd><%= @user_oshi.oshi.oshi_type %></dd>
+    <dt>所属・作品</dt><dd><%= @user_oshi.oshi.affiliation.presence || "未設定" %></dd>
+  </dl>
+  <h2>あなたの推し情報</h2>
+  <%= attachment_image_tag @representative_image, alt: "#{@user_oshi.oshi.name}の現在の代表画像", class: "representative-image" %>
+  <%= render "shared/validation_errors", resource: @user_oshi %>
+  <%= form_with model: @user_oshi do |f| %>
+    <p id="edit-period-help">推し始め・終了時期はYYYY または YYYY/MMで入力してください（例：2023、2023/05）。</p>
+    <div class="form-field">
+      <%= f.label :started_period, "推し始め" %>
+      <%= f.text_field :started_period, aria: { invalid: @user_oshi.errors[:started_period].any?, describedby: "edit-period-help" } %>
+    </div>
+    <div class="form-field">
+      <%= f.label :ended_period, "推し終了時期" %>
+      <%= f.text_field :ended_period, aria: { invalid: @user_oshi.errors[:ended_period].any?, describedby: "edit-period-help" } %>
+    </div>
+    <div class="form-field">
+      <%= f.label :representative_image, "代表画像" %>
+      <%= f.file_field :representative_image, accept: "image/jpeg,image/png,image/webp", aria: { invalid: @user_oshi.errors[:representative_image].any?, describedby: "image-help" } %>
+      <p id="image-help">JPEG・PNG・WebP、10 MiB以下。変更する場合だけ選択してください。入力エラー後は画像を再選択してください。</p>
+    </div>
+    <%= f.submit "推し情報を更新", class: "button" %>
+  <% end %>
+</section>
+<p><%= link_to "推し一覧へ戻る", oshis_path %></p>
