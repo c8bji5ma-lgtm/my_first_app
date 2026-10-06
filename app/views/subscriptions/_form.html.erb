@@ -1,0 +1,29 @@
+<%= render "shared/validation_errors", resource: @subscription %>
+<%= form_with model: @subscription do |f| %>
+  <div class="form-field">
+    <%= f.label :name, "契約名（必須）" %>
+    <%= f.text_field :name, required: true, maxlength: 255, aria: { invalid: @subscription.errors[:name].any? } %>
+  </div>
+  <div class="form-field">
+    <%= f.label :amount, "金額（円・必須）" %>
+    <%= f.number_field :amount, required: true, min: 0, step: 1, aria: { invalid: @subscription.errors[:amount].any? } %>
+  </div>
+  <div class="form-field">
+    <%= f.label :billing_cycle, "請求周期（必須）" %>
+    <%= f.select :billing_cycle, Subscription.billing_cycles.keys.map { |cycle| [billing_cycle_label(cycle), cycle] }, { include_blank: "選択してください" }, required: true, aria: { invalid: @subscription.errors[:billing_cycle].any? } %>
+  </div>
+  <div class="form-field">
+    <%= f.label :oshi_ids, "対象の推し（任意）" %>
+    <%= f.select :oshi_ids, options_from_collection_for_select(@selectable_oshis, :id, :name, @selected_oshi_ids), {}, multiple: true, size: 5, aria: { describedby: "subscription-oshi-help", invalid: @subscription.errors[:base].any? } %>
+    <p id="subscription-oshi-help">対象の推しは任意です。複数選択できます。パソコンではCtrlキー（MacではCommandキー）を押しながら選択・解除してください。</p>
+  </div>
+  <div class="form-field">
+    <%= f.label :started_on, "開始日（任意）" %>
+    <%= f.date_field :started_on, aria: { invalid: @subscription.errors[:started_on].any? } %>
+  </div>
+  <div class="form-field">
+    <%= f.label :ended_on, "終了日（任意）" %>
+    <%= f.date_field :ended_on, aria: { invalid: @subscription.errors[:ended_on].any? } %>
+  </div>
+  <%= f.submit(@subscription.persisted? ? "更新する" : "登録する", class: "button") %>
+<% end %>

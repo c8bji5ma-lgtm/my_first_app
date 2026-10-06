@@ -1,0 +1,26 @@
+<% content_for :title, "固定費一覧 | OshiLog" %>
+<h1>固定費一覧</h1>
+<p><%= link_to "固定費を登録する", new_subscription_path, class: "button" %></p>
+<% if @subscriptions.empty? %>
+  <p>固定費はまだ登録されていません。</p>
+<% else %>
+  <div class="cards">
+    <% @subscriptions.each do |subscription| %>
+      <section class="card">
+        <h2><%= subscription.name %></h2>
+        <dl class="detail-rows">
+          <dt>金額</dt><dd><%= number_with_delimiter(subscription.amount) %>円</dd>
+          <dt>請求周期</dt><dd><%= billing_cycle_label(subscription.billing_cycle) %></dd>
+          <dt>対象の推し</dt><dd><%= subscription.oshis.map(&:name).join("、").presence || "指定なし" %></dd>
+          <dt>開始日</dt><dd><%= subscription.started_on&.strftime("%Y/%m/%d") || "未設定" %></dd>
+          <dt>終了日</dt><dd><%= subscription.ended_on&.strftime("%Y/%m/%d") || "未設定" %></dd>
+          <dt>状態</dt><dd><%= subscription.active_on?(@date) ? "有効" : "無効" %></dd>
+        </dl>
+        <div class="actions">
+          <%= link_to "編集", edit_subscription_path(subscription) %>
+          <%= button_to "削除", subscription_path(subscription), method: :delete, class: "destructive-button", form: { data: { turbo_confirm: "この固定費を削除しますか？" } } %>
+        </div>
+      </section>
+    <% end %>
+  </div>
+<% end %>

@@ -1,6 +1,45 @@
 require "rails_helper"
 
 RSpec.describe Subscription, type: :model do
+  include ActiveSupport::Testing::TimeHelpers
+  describe "active dates" do
+    let(:date) { Date.new(2026, 10, 6) }
+
+    [
+      [ nil, nil, true ], [ 0, nil, true ], [ -1, nil, true ], [ 1, nil, false ],
+      [ nil, 0, true ], [ nil, 1, true ], [ nil, -1, false ],
+      [ -1, 1, true ], [ 1, 2, false ], [ -2, -1, false ],
+      [ 1, -1, false ], [ 0, -1, false ], [ 1, 0, false ]
+    ].each do |start_offset, end_offset, active|
+      it "matches scope and predicate for #{start_offset.inspect}/#{end_offset.inspect}" do
+        record = create(:subscription, started_on: start_offset && date + start_offset, ended_on: end_offset && date + end_offset)
+        expect(record.active_on?(date)).to eq(active)
+        expect(described_class.active_on(date).exists?(record.id)).to eq(active)
+      end
+    end
+
+    it "never activates an inverted interval" do
+      record = create(:subscription, started_on: date + 1, ended_on: date - 1)
+      [ date - 2, date - 1, date, date + 1, date + 2 ].each do |day|
+        expect(record.active_on?(day)).to be(false)
+        expect(described_class.active_on(day).exists?(record.id)).to be(false)
+      end
+    end
+
+    it "defaults the predicate to today and chains owner and enum scopes" do
+      travel_to(date) do
+        user = create(:user)
+        monthly = create(:subscription, user: user, started_on: date, ended_on: date)
+        yearly = create(:subscription, :yearly, user: user)
+        create(:subscription, user: user, started_on: date + 1)
+        create(:subscription)
+        expect(monthly.active_on?).to be(true)
+        expect(user.subscriptions.active_on(Date.current).monthly).to contain_exactly(monthly)
+        expect(user.subscriptions.active_on(Date.current).yearly).to contain_exactly(yearly)
+      end
+    end
+  end
+
   it "belongs to its user and requires that user" do
     record = create(:subscription)
     expect(record.user.subscriptions).to contain_exactly(record)
