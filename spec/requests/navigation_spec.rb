@@ -62,10 +62,10 @@ RSpec.describe "Global navigation and feature destinations", type: :request do
       post user_session_path, params: { user: { email: user.email, password: "password123" } }
     end
 
-    it "links the data preparation page to fixed costs without changing the profile page" do
+    it "links the implemented data page to fixed costs without changing the profile page" do
       get oshi_data_path
       expect(document.at_css("main a[href='#{subscriptions_path}']").text).to eq("固定費を管理する")
-      expect(document.at_css("main").text).to include("準備中")
+      expect(document.at_css("main").text).not_to include("準備中")
       get edit_profile_path
       expect(document.css("main a[href='#{subscriptions_path}']")).to be_empty
     end
@@ -104,7 +104,6 @@ RSpec.describe "Global navigation and feature destinations", type: :request do
     end
 
     {
-      "/data" => "推し活データ",
       "/profile/edit" => "プロフィール編集"
     }.each do |path, title|
       it "provides a protected preparation page at #{path}" do
@@ -116,6 +115,16 @@ RSpec.describe "Global navigation and feature destinations", type: :request do
         expect(document.at_css("main").text).to include("準備中")
         expect(document.css("main form")).to be_empty
       end
+    end
+
+    it "links my page to the implemented protected data page" do
+      get my_page_path
+      expect(document.at_css("main a[href='#{oshi_data_path}']").text).to eq("推し活データを見る")
+      get oshi_data_path
+      expect(response).to have_http_status(:ok)
+      expect(document.at_css("main h1").text).to eq("推し活データ")
+      expect(document.at_css("title").text).to eq("推し活データ | OshiLog")
+      expect(document.at_css("main").text).not_to include("準備中")
     end
 
     { "/activities" => "活動記録一覧", "/activities/new" => "活動記録を登録" }.each do |path, title|
