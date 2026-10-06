@@ -306,3 +306,132 @@ fieldset {
   font: inherit;
   cursor: pointer;
 }
+
+.oshi-data .data-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 1rem;
+}
+
+.oshi-data .data-filter .form-field {
+  flex: 1 1 180px;
+  margin: 0;
+}
+
+.oshi-data .data-filter .validation-errors {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.oshi-data .data-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.oshi-data .data-value {
+  font-size: 1.65rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.oshi-data .data-value span {
+  margin-left: 0.25rem;
+  font-size: 1rem;
+}
+
+.oshi-data .data-note,
+.oshi-data .data-period {
+  color: #4c5f73;
+  font-size: 0.9rem;
+}
+
+.oshi-data .data-section {
+  margin-top: 1.5rem;
+}
+
+.oshi-data .monthly-bars,
+.oshi-data .data-categories,
+.oshi-data .data-oshis {
+  padding: 0;
+  list-style: none;
+}
+
+.oshi-data .monthly-bars li {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) 4rem;
+  align-items: center;
+  gap: 0.75rem;
+  margin-block: 0.65rem;
+}
+
+.oshi-data .data-bar-track {
+  display: block;
+  height: 0.75rem;
+  border-radius: 0.2rem;
+  background: #edf4fa;
+}
+
+.oshi-data .data-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #245b8a;
+}
+
+.oshi-data .data-bar-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.oshi-data .data-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding-block: 0.5rem;
+}
+
+.oshi-data .data-categories li + li,
+.oshi-data .data-oshis li + li {
+  margin-top: 0.5rem;
+}
+
+.oshi-data .data-oshis .data-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+}
+
+.oshi-data .data-oshis .data-row > :last-child {
+  font-variant-numeric: tabular-nums;
+}
+
+.oshi-data .data-insight > p:first-of-type {
+  font-weight: 600;
+}
+
+.oshi-data .data-fixed-costs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 3rem;
+}
+
+.oshi-data .data-fixed-costs dd {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 800px) {
+  .oshi-data .data-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .oshi-data .data-filter {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

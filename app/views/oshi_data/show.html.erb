@@ -1,0 +1,117 @@
+<% content_for :title, "推し活データ | OshiLog" %>
+
+<div class="oshi-data">
+  <h1>推し活データ</h1>
+  <%= form_with url: oshi_data_path, method: :get, class: "data-filter card" do |f| %>
+    <% if @filter_errors.any? %>
+      <div id="data-filter-errors" class="validation-errors" role="alert"><%= @filter_errors.join(" ") %></div>
+    <% end %>
+    <div class="form-field">
+      <%= f.label :year, "期間" %>
+      <%= f.select :year, options_for_select(@years.map { |year| [ "#{year}年", year ] }, @selected_year), {}, aria: { describedby: ("data-filter-errors" if @filter_errors.any?) } %>
+    </div>
+    <div class="form-field">
+      <%= f.label :oshi_id, "推し" %>
+      <%= f.select :oshi_id, options_for_select(@user_oshis.map { |record| [ record.oshi.name, record.oshi_id ] }, @selected_oshi&.id), { include_blank: "すべて" }, aria: { describedby: ("data-filter-errors" if @filter_errors.any?) } %>
+    </div>
+    <%= f.submit "表示する", class: "button" %>
+  <% end %>
+
+  <% if @summary %>
+    <p class="data-period"><%= @selected_year %>年1月1日〜<%= @summary.period_end.strftime("%Y年%-m月%-d日") %>の活動<%= "（#{@selected_oshi.name}）" if @selected_oshi %></p>
+    <div class="cards data-summary">
+      <section class="card">
+        <h2>活動回数</h2>
+        <p class="data-value" id="activity-count"><%= number_with_delimiter(@summary.activity_count) %><span>回</span></p>
+        <% change = @summary.activity_change %>
+        <p>前年同期 <%= change.zero? ? "±0" : "#{'+' if change.positive?}#{number_with_delimiter(change)}" %>回</p>
+      </section>
+      <section class="card">
+        <h2>活動支出</h2>
+        <p class="data-value" id="activity-amount"><%= @summary.amount_recorded? ? "#{number_with_delimiter(@summary.activity_amount)}円" : "支出記録なし" %></p>
+        <p>月平均 <%= @summary.amount_recorded? ? "#{number_with_delimiter(@summary.monthly_average)}円" : "—" %></p>
+        <% if @selected_oshi %>
+          <p class="data-note">複数推しの共通支出は推し別支出に含みません。</p>
+        <% end %>
+      </section>
+      <section class="card">
+        <h2>推し歴</h2>
+        <p id="oshi-history"><%= @summary.history %></p>
+        <% if @user_oshis.empty? %>
+          <%= link_to "推しを登録する", new_oshi_path, class: "button button-secondary" %>
+        <% end %>
+      </section>
+    </div>
+
+    <section class="card data-section" aria-labelledby="monthly-heading">
+      <h2 id="monthly-heading">月別活動</h2>
+      <% if @summary.activity_count.zero? %>
+        <p class="data-empty">活動記録がまだありません。記録すると月ごとの活動を確認できます。</p>
+      <% end %>
+      <% maximum = @summary.monthly_activities.map { |row| row[:count] }.max %>
+      <ul class="monthly-bars">
+        <% @summary.monthly_activities.each do |row| %>
+          <li>
+            <span class="monthly-label"><%= row[:month] %>月</span>
+            <span class="data-bar-track" aria-hidden="true"><span class="data-bar" style="width: <%= maximum.zero? ? 0 : row[:count] * 100.0 / maximum %>%"></span></span>
+            <span class="data-bar-value"><%= row[:count] %>回</span>
+          </li>
+        <% end %>
+      </ul>
+    </section>
+
+    <section class="card data-section" aria-labelledby="category-heading">
+      <h2 id="category-heading">カテゴリ割合</h2>
+      <% if @summary.categories.empty? %>
+        <p class="data-empty">活動記録がまだありません。</p>
+      <% else %>
+        <ul class="data-categories">
+          <% @summary.categories.each do |row| %>
+            <li>
+              <div class="data-row"><span><%= row[:name] %></span><span><%= row[:percentage] %>%（<%= row[:count] %>回）</span></div>
+              <span class="data-bar-track" aria-hidden="true"><span class="data-bar" style="width: <%= row[:percentage] %>%"></span></span>
+            </li>
+          <% end %>
+        </ul>
+        <p class="data-note">割合は四捨五入のため、合計が100%にならない場合があります。</p>
+      <% end %>
+    </section>
+
+    <section class="card data-section" aria-labelledby="per-oshi-heading">
+      <h2 id="per-oshi-heading">推し別活動</h2>
+      <% if @summary.per_oshi.empty? %>
+        <p class="data-empty">推しが登録されていません。</p>
+      <% else %>
+        <ul class="data-oshis">
+          <% @summary.per_oshi.each do |row| %>
+            <li class="data-row"><span><%= row[:oshi].name %></span><span><%= row[:count] %>回</span></li>
+          <% end %>
+        </ul>
+        <p class="data-note">複数推しの活動は各推しに1回ずつ数えるため、合計が活動回数を上回ることがあります。</p>
+      <% end %>
+    </section>
+
+    <section class="card data-section data-insight" aria-labelledby="insight-heading">
+      <h2 id="insight-heading">今回の気づき</h2>
+      <p id="data-highlight"><%= @summary.highlight || "比較できる活動記録がまだありません。" %></p>
+      <% periods = @summary.highlight_periods %>
+      <p class="data-note"><%= periods[:recent].begin.strftime("%Y/%-m/%-d") %>〜<%= periods[:recent].end.strftime("%Y/%-m/%-d") %>と、<%= periods[:previous].begin.strftime("%Y/%-m/%-d") %>〜<%= periods[:previous].end.strftime("%Y/%-m/%-d") %>のカテゴリ割合を比較しています。</p>
+    </section>
+
+    <section class="card data-section" aria-labelledby="fixed-cost-heading">
+      <h2 id="fixed-cost-heading">現在の固定費（全体）</h2>
+      <p class="data-note"><%= @reference_date.strftime("%Y年%-m月%-d日") %>時点。期間・推しの選択にかかわらず、現在有効な契約全体を表示します。</p>
+      <dl class="data-fixed-costs">
+        <div><dt>月額固定費</dt><dd id="monthly-fixed-cost"><%= number_with_delimiter(@summary.monthly_fixed_cost) %>円</dd></div>
+        <div><dt>年額固定費</dt><dd id="yearly-fixed-cost"><%= number_with_delimiter(@summary.yearly_fixed_cost) %>円</dd></div>
+      </dl>
+      <p class="data-note">活動支出には含めず、月額と年額を別々に表示しています。</p>
+      <%= link_to "固定費を管理する", subscriptions_path, class: "button button-secondary" %>
+    </section>
+  <% end %>
+
+  <div class="actions data-section">
+    <%= link_to "記録する", new_activity_path, class: "button" %>
+    <%= link_to "活動記録一覧を見る", activities_path, class: "button button-secondary" %>
+  </div>
+</div>
