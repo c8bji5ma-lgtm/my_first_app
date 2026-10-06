@@ -183,6 +183,52 @@ RSpec.describe Activities::Save do
       expect(lock_index).to be < update_index
     end
   end
+  describe "appending new images" do
+    let(:activity) { create(:activity) }
+
+    before do
+      activity.images.attach(image_upload)
+    end
+
+    [ nil, [] ].each do |uploads|
+      it "retains existing images when new_images is #{uploads.inspect}" do
+        original = activity.images.first.blob_id
+        described_class.call(activity: activity, attributes: { title: "更新" }, new_images: uploads)
+        expect(activity.reload.images.map(&:blob_id)).to eq([ original ])
+      end
+    end
+
+    it "appends images and retains original bytes" do
+      original = activity.images.first.blob_id
+      described_class.call(activity: activity, new_images: [ image_upload("image.webp") ])
+      expect(activity.reload.images.count).to eq(2)
+      expect(activity.images.map(&:blob_id)).to include(original)
+      expect(activity.images.last.download).to eq(File.binread(Rails.root.join("spec/fixtures/files/image.webp")))
+    end
+
+    it "refreshes stale attachments under the parent lock before appending" do
+      activity.images.blobs.load
+      other_instance = Activity.find(activity.id)
+      other_instance.images.attach(image_upload("image.jpg"))
+      described_class.call(activity: activity, new_images: [ image_upload("image.webp") ])
+      expect(activity.reload.images.map { |image| image.filename.to_s }).to match_array(%w[image.png image.jpg image.webp])
+    end
+
+    it "rolls back scalar, links and images when the new image is invalid" do
+      original_title = activity.title
+      original_ids = activity.oshi_ids
+      original_blobs = activity.images.map(&:blob_id)
+      counts = [ ActiveStorage::Blob.count, ActiveStorage::Attachment.count ]
+      replacement = create(:oshi)
+      expect do
+        described_class.call(activity: activity, attributes: { title: "失敗" }, oshi_ids: [ replacement.id ], new_images: [ image_upload("invalid.txt") ])
+      end.to raise_error(ActiveRecord::RecordInvalid)
+      expect(activity.reload.title).to eq(original_title)
+      expect(activity.oshi_ids).to eq(original_ids)
+      expect(activity.images.map(&:blob_id)).to eq(original_blobs)
+      expect([ ActiveStorage::Blob.count, ActiveStorage::Attachment.count ]).to eq(counts)
+    end
+  end
   describe "image attachments through attributes" do
     [ 1, 2 ].each do |count|
       it "creates an activity with #{count} original images" do

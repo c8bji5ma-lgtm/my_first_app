@@ -1,0 +1,53 @@
+<% if @selectable_oshis.empty? %>
+  <p>先に推しを登録してください。<%= link_to "推しを登録", new_oshi_path %></p>
+<% end %>
+<%= render "shared/validation_errors", resource: @activity %>
+<%= form_with model: @activity do |f| %>
+  <div class="activity-form-grid">
+    <div class="form-field">
+      <%= f.label :oshi_ids, "推し（必須・1件以上）" %>
+      <%= f.select :oshi_ids, options_from_collection_for_select(@selectable_oshis, :id, :name, @selected_oshi_ids), {}, multiple: true, required: true, size: 5, aria: { describedby: "oshi-selection-help", invalid: @activity.errors[:activity_oshis].any? || @activity.errors[:base].any? } %>
+      <p id="oshi-selection-help">複数選択できます。パソコンではCtrlキー（MacではCommandキー）を押しながら選択してください。</p>
+    </div>
+    <div class="form-field">
+      <%= f.label :occurred_on, "活動日（必須）" %>
+      <%= f.date_field :occurred_on, required: true, aria: { invalid: @activity.errors[:occurred_on].any? } %>
+    </div>
+    <div class="form-field">
+      <%= f.label :activity_type, "カテゴリ（必須）" %>
+      <%= f.select :activity_type, Activity::ACTIVITY_TYPES, { include_blank: "選択してください" }, required: true, aria: { invalid: @activity.errors[:activity_type].any? } %>
+    </div>
+    <div class="form-field">
+      <%= f.label :title, "タイトル（必須）" %>
+      <%= f.text_field :title, required: true, maxlength: 255, aria: { invalid: @activity.errors[:title].any? } %>
+    </div>
+    <div class="form-field">
+      <%= f.label :place, "場所" %>
+      <%= f.text_field :place, maxlength: 255, aria: { invalid: @activity.errors[:place].any? } %>
+    </div>
+    <div class="form-field">
+      <%= f.label :amount, "金額（円）" %>
+      <%= f.number_field :amount, min: 0, step: 1, aria: { invalid: @activity.errors[:amount].any? } %>
+    </div>
+  </div>
+  <div class="form-field">
+    <%= f.label :memo, "メモ" %>
+    <%= f.text_area :memo, rows: 5, aria: { invalid: @activity.errors[:memo].any? } %>
+  </div>
+  <% if @existing_images.any? %>
+    <section>
+      <h2>保存済みの画像</h2>
+      <div class="image-gallery">
+        <% @existing_images.each_with_index do |image, index| %>
+          <%= attachment_image_tag image, alt: "#{@activity.title}の画像 #{index + 1}" %>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+  <div class="form-field">
+    <%= f.label :images, "画像（複数可）" %>
+    <%= f.file_field :images, multiple: true, accept: "image/jpeg,image/png,image/webp", aria: { describedby: "activity-image-help", invalid: @activity.errors[:images].any? } %>
+    <p id="activity-image-help">JPEG・PNG・WebP、各画像10 MiB以下。新しく選択した画像は既存画像に追加されます。画像の登録に失敗した場合は、画像をもう一度選択してください。</p>
+  </div>
+  <%= f.submit(@activity.persisted? ? "更新する" : "記録する", class: "button") %>
+<% end %>
