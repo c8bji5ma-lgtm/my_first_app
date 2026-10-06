@@ -1,6 +1,8 @@
 require "rails_helper"
+require_relative "../../support/image_attachments"
 
 RSpec.describe Activities::Save do
+  include ImageAttachments
   def save_activity(activity, oshi_ids: nil, attributes: {})
     described_class.call(activity: activity, oshi_ids: oshi_ids, attributes: attributes)
   end
@@ -179,6 +181,44 @@ RSpec.describe Activities::Save do
       expect(lock_index).not_to be_nil
       expect(update_index).not_to be_nil
       expect(lock_index).to be < update_index
+    end
+  end
+  describe "image attachments through attributes" do
+    [ 1, 2 ].each do |count|
+      it "creates an activity with #{count} original images" do
+        activity = build(:activity, :without_oshis)
+        oshi = create(:oshi)
+        save_activity(activity, oshi_ids: [ oshi.id ], attributes: { images: Array.new(count) { image_upload } })
+        expect(activity.reload.images.size).to eq(count)
+        expect(activity.oshi_ids).to eq([ oshi.id ])
+        activity.images.each do |image|
+          expect(image.download).to eq(File.binread(Rails.root.join("spec/fixtures/files/image.png")))
+        end
+      end
+    end
+
+    it "does not persist the activity, links, blobs, or attachments for an invalid image" do
+      activity = build(:activity, :without_oshis)
+      oshi = create(:oshi)
+      models = [ Activity, ActivityOshi, ActiveStorage::Blob, ActiveStorage::Attachment ]
+      counts = models.map(&:count)
+      expect do
+        save_activity(activity, oshi_ids: [ oshi.id ], attributes: { images: [ image_upload("invalid.txt") ] })
+      end.to raise_error(ActiveRecord::RecordInvalid)
+      expect(models.map(&:count)).to eq(counts)
+    end
+
+    it "rolls back an existing activity and its links when pending images are invalid" do
+      activity = create(:activity)
+      original_title = activity.title
+      original_ids = activity.oshi_ids
+      replacement = create(:oshi)
+      expect do
+        save_activity(activity, oshi_ids: [ replacement.id ], attributes: { title: "失敗", images: [ image_upload("invalid.txt") ] })
+      end.to raise_error(ActiveRecord::RecordInvalid)
+      expect(activity.reload.title).to eq(original_title)
+      expect(activity.oshi_ids).to eq(original_ids)
+      expect(activity.images).not_to be_attached
     end
   end
 end
