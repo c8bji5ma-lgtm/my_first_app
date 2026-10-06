@@ -60,10 +60,6 @@ http://localhost:3000
 
 ## 要件定義資料
 
-初回の要件定義後、実装前の再検討および画面設計の見直しを行い、画面構成・画面遷移・グローバルナビゲーション等を更新しています。
-
-実装時は、本READMEおよび以下に掲載している最新の要件定義資料・画面遷移図・ワイヤーフレームを基準とします。
-
 ### チェックシート
 
 [チェックシートを確認する](https://docs.google.com/spreadsheets/d/1hWaamzG78rVdf1tu79aZMsmti1YSxQMKiD_1AjhuCVg/edit#gid=1321893864)
@@ -78,7 +74,7 @@ http://localhost:3000
 
 ### ワイヤーフレーム
 
-[Whimsicalで最新の画面設計を確認する](https://whimsical.com/yuki-atarashi/oshilog-67ZWRKGYJbwuuHeTVJXfTW)
+[Whimsicalでワイヤーフレームを確認する](https://whimsical.com/4JZqsPQdZ6TfN7LoLxQJbw)
 
 ## ER図
 
@@ -92,36 +88,14 @@ http://localhost:3000
 
 [WhimsicalでER図を確認する](https://whimsical.com/yuki-atarashi/oshilog-er-mvp-PDbRKWDyLu1fJfbJxNVMP6)
 
-## 画面遷移図・ワイヤーフレーム
+## 画面遷移図
 
-最新の画面設計を、内容ごとに分けて掲載しています。
+文字が確認しやすいよう、画面遷移図を3枚に分けて掲載しています。
 
-### 全体
+![画面遷移図 1](docs/images/screen_transition1.png)
 
-![画面遷移図・全体](docs/images/01_画面遷移図_全体.png)
+![画面遷移図 2](docs/images/screen_transition2.png)
 
-### タイトル・凡例・グローバルナビゲーション
+![画面遷移図 3](docs/images/screen_transition3.png)
 
-![タイトル・凡例・グローバルナビゲーション](docs/images/02_タイトル_凡例_グローバルナビ.png)
-
-### 推し管理
-
-![推し管理](docs/images/03_推し管理.png)
-
-### 活動記録
-
-![活動記録](docs/images/04_活動記録.png)
-
-### 認証・共通画面
-
-![認証・共通画面](docs/images/05_認証_共通画面.png)
-
-### データ・プロフィール
-
-![データ・プロフィール](docs/images/06_データ_プロフィール.png)
-
-### 画面遷移に関する補足
-
-![画面遷移に関する補足](docs/images/07_画面遷移に関する補足.png)
-
-[Whimsicalで最新の画面設計を確認する](https://whimsical.com/yuki-atarashi/oshilog-67ZWRKGYJbwuuHeTVJXfTW)
+[Whimsicalで画面遷移図を確認する](https://whimsical.com/WDUvK4vCEAQMWQW7cbuDjR)
