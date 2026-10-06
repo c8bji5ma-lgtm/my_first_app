@@ -6,6 +6,9 @@ class UserOshi < ApplicationRecord
 
   before_validation :normalize_empty_periods
 
+  has_one_attached :representative_image
+  validates :representative_image, image_attachment: true
+
   validates :oshi_id, uniqueness: { scope: :user_id }
   validates :started_period, :ended_period,
     format: { with: PERIOD_FORMAT }, allow_nil: true

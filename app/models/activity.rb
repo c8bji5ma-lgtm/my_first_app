@@ -7,6 +7,9 @@ class Activity < ApplicationRecord
   has_many :activity_oshis, inverse_of: :activity, autosave: true
   has_many :oshis, through: :activity_oshis
 
+  has_many_attached :images
+  validates :images, image_attachment: true
+
   validates :occurred_on, presence: true
   validates :title, presence: true, length: { maximum: 255 }
   validates :activity_type, presence: true, length: { maximum: 50 },
