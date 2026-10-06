@@ -173,6 +173,62 @@ h2 {
   outline-offset: 3px;
 }
 
+.oshi-form + .oshi-form {
+  margin-top: 1rem;
+}
+
+.form-field {
+  margin-block: 1rem;
+}
+
+.form-field label {
+  display: block;
+  font-weight: 600;
+}
+
+.form-field input,
+.form-field select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem;
+  border: 1px solid #738395;
+  border-radius: 0.25rem;
+  font: inherit;
+}
+
+.form-field [aria-invalid="true"] {
+  border: 2px solid #812c2c;
+}
+
+fieldset {
+  margin-block: 1rem;
+  border: 1px solid #d5dee8;
+  min-width: 0;
+}
+
+.validation-errors {
+  margin-block: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #812c2c;
+  color: #812c2c;
+  background: #fff0f0;
+}
+
+.detail-rows dt {
+  font-weight: 600;
+}
+
+.detail-rows dd {
+  margin: 0 0 1rem;
+}
+
+.representative-image {
+  width: 240px;
+  max-width: 100%;
+  height: 180px;
+  object-fit: contain;
+}
+
 @media (max-width: 640px) {
   .cards {
     grid-template-columns: minmax(0, 1fr);

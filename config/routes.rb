@@ -8,7 +8,9 @@ Rails.application.routes.draw do
   get "home", to: "pages#home", as: :home
   get "my_page", to: "pages#my_page", as: :my_page
 
-  get "oshis", to: "feature_placeholders#show", as: :oshis, defaults: { feature: "oshis" }
+  get "oshis", to: "user_oshis#index", as: :oshis
+  resources :oshis, only: [ :new, :create ]
+  resources :user_oshis, only: [ :create, :show, :edit, :update ]
   get "activities", to: "feature_placeholders#show", as: :activities, defaults: { feature: "activities" }
   get "activities/new", to: "feature_placeholders#show", as: :new_activity, defaults: { feature: "new_activity" }
   get "data", to: "feature_placeholders#show", as: :oshi_data, defaults: { feature: "data" }

@@ -1,0 +1,117 @@
+require "rails_helper"
+
+RSpec.describe "Oshi search and registration", type: :request do
+  let(:user) { create(:user) }
+
+  def document
+    Nokogiri::HTML(response.body)
+  end
+
+  def register(attributes = {}, periods = {})
+    post oshis_path, params: {
+      oshi: { name: "新しい推し", oshi_type: "アイドル", affiliation: "所属" }.merge(attributes),
+      user_oshi: { started_period: "2023/05" }.merge(periods)
+    }
+  end
+
+  context "when signed out" do
+    it "requires login for search and registration" do
+      get new_oshi_path
+      expect(response).to redirect_to(new_user_session_path)
+      expect { register }.not_to change(Oshi, :count)
+      expect(response).to redirect_to(new_user_session_path)
+    end
+  end
+
+  context "when signed in" do
+    before { post user_session_path, params: { user: { email: user.email, password: "password123" } } }
+
+    it "searches approved and own pending while hiding unavailable statuses" do
+      approved = create(:oshi, :approved, name: "検索承認")
+      own = create(:oshi, :pending, name: "検索本人", created_by_user: user)
+      create(:oshi, :pending, name: "検索他人", created_by_user: create(:user))
+      create(:oshi, :pending, name: "検索登録者なし")
+      create(:oshi, :rejected, name: "検索却下", created_by_user: user)
+      get new_oshi_path, params: { q: "検索" }
+      expect(response).to have_http_status(:ok)
+      expect(document.css("select[name='oshi_id'] option[value]").map { |option| option["value"] }.reject(&:empty?))
+        .to contain_exactly(approved.id.to_s, own.id.to_s)
+      expect(document.at_css("main").text).not_to include("検索他人", "検索登録者なし", "検索却下")
+    end
+
+    it "matches case-insensitive aliases once and does not search affiliations" do
+      oshi = create(:oshi, :approved, name: "対象")
+      create(:oshi_alias, oshi: oshi, alias_name: "CANDY first")
+      create(:oshi_alias, oshi: oshi, alias_name: "candy second")
+      create(:oshi, :approved, name: "所属だけ", affiliation: "candy")
+      hidden = create(:oshi, :pending, name: "他人", created_by_user: create(:user))
+      create(:oshi_alias, oshi: hidden, alias_name: "candy")
+      get new_oshi_path, params: { q: "cAnDy" }
+      expect(document.css("select[name='oshi_id'] option[value='#{oshi.id}']").size).to eq(1)
+      expect(document.at_css("main").text).not_to include("所属だけ", "他人")
+    end
+
+    [ "%", "_", "\\" ].each do |query|
+      it "escapes #{query.inspect} in the search request" do
+        match = create(:oshi, :approved, name: "literal#{query}target")
+        create(:oshi, :approved, name: "literalXtarget")
+        get new_oshi_path, params: { q: query }
+        expect(document.css("select[name='oshi_id'] option[value]").map { |option| option["value"] }.reject(&:empty?))
+          .to eq([ match.id.to_s ])
+      end
+    end
+
+    it "shows no candidates before a search or for whitespace" do
+      create(:oshi, :approved, name: "大量表示しない推し")
+      [ nil, " " ].each do |query|
+        get new_oshi_path, params: { q: query }
+        expect(document.css("select[name='oshi_id']")).to be_empty
+        expect(document.at_css("main").text).not_to include("大量表示しない推し")
+      end
+    end
+
+    it "creates both records with server-controlled ownership and pending status" do
+      other = create(:user)
+      expect do
+        register({ status: "approved", created_by_user_id: other.id }, { user_id: other.id, ended_period: "2025" })
+      end.to change(Oshi, :count).by(1).and change(UserOshi, :count).by(1)
+      oshi = Oshi.order(:id).last
+      link = UserOshi.order(:id).last
+      expect(oshi).to have_attributes(status: "pending", created_by_user_id: user.id, affiliation: "所属")
+      expect(link).to have_attributes(user_id: user.id, oshi_id: oshi.id, started_period: "2023/05", ended_period: nil)
+      expect(response).to redirect_to(oshis_path)
+      follow_redirect!
+      expect(document.at_css("[role='status']").text).to include("推しを登録しました")
+      expect(document.at_css("main").text).to include("新しい推し", "2023/05")
+    end
+
+    it "allows an unspecified starting period" do
+      register({}, started_period: "")
+      expect(response).to redirect_to(oshis_path)
+      expect(user.user_oshis.last.started_period).to be_nil
+    end
+
+    it "persists neither record and shows both model errors for invalid input" do
+      expect { register({ name: "" }, { started_period: "2023/13" }) }
+        .to change(Oshi, :count).by(0).and change(UserOshi, :count).by(0)
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(document.css(".validation-errors[role='alert']").size).to eq(2)
+      expect(document.at_css("input[name='user_oshi[started_period]']")["value"]).to eq("2023/13")
+    end
+
+    it "rolls back the saved oshi when the user period is invalid" do
+      expect { register({}, started_period: "2023-05") }
+        .to change(Oshi, :count).by(0).and change(UserOshi, :count).by(0)
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(document.at_css("input[name='oshi[name]']")["value"]).to eq("新しい推し")
+      expect(document.at_css("input[name='user_oshi[started_period]']")["aria-invalid"]).to eq("true")
+      expect(document.css(".validation-errors")).not_to be_empty
+    end
+
+    it "keeps registration fields limited to the existing schema" do
+      get new_oshi_path
+      expect(document.css("textarea")).to be_empty
+      expect(document.css("input[name*='status'], input[name*='created_by_user'], input[name*='user_id']")).to be_empty
+    end
+  end
+end

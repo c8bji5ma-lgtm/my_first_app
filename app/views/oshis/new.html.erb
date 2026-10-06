@@ -1,0 +1,66 @@
+<% content_for :title, "推し登録 | OshiLog" %>
+<h1>推し登録</h1>
+<section class="card oshi-form">
+  <h2>既存の推しから選ぶ</h2>
+  <%= form_with url: new_oshi_path, method: :get do |f| %>
+    <div class="form-field">
+      <%= f.label :q, "推しを検索" %>
+      <%= f.search_field :q, value: params[:q], placeholder: "名前・別名で検索" %>
+    </div>
+    <%= f.submit "検索", class: "button" %>
+  <% end %>
+  <%= render "shared/validation_errors", resource: @existing_user_oshi %>
+  <% if @oshis.any? %>
+    <%= form_with model: @existing_user_oshi, url: user_oshis_path, namespace: :existing do |f| %>
+      <%= hidden_field_tag :q, params[:q], id: "existing_query" %>
+      <div class="form-field">
+        <%= label_tag :oshi_id, "既存候補" %>
+        <%= select_tag :oshi_id, options_from_collection_for_select(@oshis, :id, :name, @existing_user_oshi.oshi_id), include_blank: "候補から選択", required: true %>
+      </div>
+      <div class="form-field">
+        <%= f.label :started_period, "推し始め" %>
+        <%= f.text_field :started_period, aria: { invalid: @existing_user_oshi.errors[:started_period].any?, describedby: "existing-period-help" } %>
+        <p id="existing-period-help">YYYY または YYYY/MMで入力してください（例：2023、2023/05）。</p>
+      </div>
+      <%= f.submit "選んだ推しを追加", class: "button" %>
+    <% end %>
+  <% elsif params[:q].present? %>
+    <p>該当する推しが見つかりませんでした。</p>
+  <% else %>
+    <p>名前・別名を入力して検索してください。</p>
+  <% end %>
+</section>
+<section class="card oshi-form">
+  <h2>新しい推しを登録</h2>
+  <%= render "shared/validation_errors", resource: @oshi %>
+  <%= render "shared/validation_errors", resource: @user_oshi %>
+  <%= form_with model: @oshi do |f| %>
+    <fieldset>
+      <legend>共通推し情報</legend>
+      <div class="form-field">
+        <%= f.label :name, "推し名（必須）" %>
+        <%= f.text_field :name, required: true, maxlength: 255, aria: { invalid: @oshi.errors[:name].any? } %>
+      </div>
+      <div class="form-field">
+        <%= f.label :oshi_type, "種別（必須）" %>
+        <%= f.select :oshi_type, Oshi::OSHI_TYPES, { include_blank: "選択してください" }, required: true, aria: { invalid: @oshi.errors[:oshi_type].any? } %>
+      </div>
+      <div class="form-field">
+        <%= f.label :affiliation, "所属・作品" %>
+        <%= f.text_field :affiliation, maxlength: 255, aria: { invalid: @oshi.errors[:affiliation].any? } %>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>あなたの推し情報</legend>
+      <%= fields_for :user_oshi, @user_oshi, namespace: :new do |uf| %>
+        <div class="form-field">
+          <%= uf.label :started_period, "推し始め" %>
+          <%= uf.text_field :started_period, aria: { invalid: @user_oshi.errors[:started_period].any?, describedby: "new-period-help" } %>
+          <p id="new-period-help">YYYY または YYYY/MMで入力してください（例：2023、2023/05）。</p>
+        </div>
+      <% end %>
+    </fieldset>
+    <%= f.submit "新しい推しを登録", class: "button" %>
+  <% end %>
+</section>
+<p><%= link_to "推し一覧へ戻る", oshis_path %></p>

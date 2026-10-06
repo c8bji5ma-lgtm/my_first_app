@@ -1,6 +1,45 @@
 require "rails_helper"
 
 RSpec.describe Oshi, type: :model do
+  describe "visibility and search" do
+    let(:user) { create(:user) }
+
+    it "includes approved and only the user's pending records" do
+      approved = create(:oshi, :approved)
+      own_pending = create(:oshi, :pending, created_by_user: user)
+      create(:oshi, :pending, created_by_user: create(:user))
+      create(:oshi, :pending, created_by_user: nil)
+      create(:oshi, :rejected, created_by_user: user)
+      create(:oshi, :rejected)
+      expect(described_class.visible_to(user)).to contain_exactly(approved, own_pending)
+    end
+
+    it "searches names and aliases without duplicates or affiliation matches" do
+      named = create(:oshi, :approved, name: "CANDY TUNE")
+      aliased = create(:oshi, :approved)
+      create(:oshi_alias, oshi: named, alias_name: "candy")
+      create(:oshi_alias, oshi: aliased, alias_name: "Candy alias")
+      create(:oshi_alias, oshi: aliased, alias_name: "CANDY second")
+      create(:oshi, :approved, affiliation: "CANDY")
+      expect(described_class.search("candy")).to contain_exactly(named, aliased)
+    end
+
+    [ "%", "_", "\\" ].each do |query|
+      it "treats #{query.inspect} as a literal in names and aliases" do
+        named = create(:oshi, name: "推し#{query}名前")
+        aliased = create(:oshi)
+        create(:oshi_alias, oshi: aliased, alias_name: "別名#{query}推し")
+        create(:oshi, name: "推し普通名前")
+        expect(described_class.search(query)).to contain_exactly(named, aliased)
+      end
+    end
+
+    it "returns no candidates for an empty or whitespace search" do
+      create(:oshi, :approved)
+      [ nil, "", " " ].each { |query| expect(described_class.search(query)).to be_empty }
+    end
+  end
+
   it "exposes subscription_oshis and subscriptions without automatic deletion" do
     record = create(:subscription_oshi)
     expect(record.oshi.subscription_oshis).to contain_exactly(record)
