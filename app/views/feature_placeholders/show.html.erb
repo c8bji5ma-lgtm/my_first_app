@@ -1,0 +1,9 @@
+<% content_for :title, "#{@feature.fetch(:title)} | OshiLog" %>
+
+<section class="card placeholder">
+  <h1><%= @feature.fetch(:title) %></h1>
+  <p><%= @feature.fetch(:message) %></p>
+  <% if @feature[:record_link] %>
+    <%= link_to "記録する", new_activity_path, class: "button" %>
+  <% end %>
+</section>

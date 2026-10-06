@@ -8,3 +8,181 @@
  *
  * Consider organizing styles into separate files for maintainability.
  */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: #243447;
+  background: #f7f9fb;
+  font-family: system-ui, sans-serif;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+a {
+  color: #245b8a;
+}
+
+.page-width {
+  width: min(100% - 2rem, 64rem);
+  margin-inline: auto;
+}
+
+.site-header {
+  background: #fff;
+  border-bottom: 1px solid #d5dee8;
+}
+
+.header-content,
+.nav-items,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.header-content {
+  justify-content: space-between;
+  padding-block: 0.75rem;
+}
+
+.site-brand {
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.nav-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav-items a,
+.nav-logout {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.5rem;
+  border: 0;
+  border-radius: 0.25rem;
+  color: #243447;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.nav-items a[aria-current="page"] {
+  background: #edf4fa;
+  font-weight: 700;
+  text-decoration-thickness: 2px;
+}
+
+.nav-items a:hover,
+.nav-logout:hover {
+  background: #edf4fa;
+}
+
+main {
+  padding-block: 2rem;
+}
+
+h1,
+h2 {
+  line-height: 1.4;
+}
+
+h1 {
+  margin-top: 0;
+}
+
+h2 {
+  margin-top: 0;
+  font-size: 1.2rem;
+}
+
+.top-intro {
+  margin-bottom: 2rem;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  padding: 1.25rem;
+  border: 1px solid #d5dee8;
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.card p {
+  margin-block: 0.75rem;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border: 1px solid #245b8a;
+  border-radius: 0.25rem;
+  color: #fff;
+  background: #245b8a;
+  text-decoration: none;
+}
+
+.button-secondary {
+  color: #245b8a;
+  background: #fff;
+}
+
+.preparing {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.25rem;
+  background: #edf4fa;
+}
+
+.flash {
+  margin-block: 1rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid;
+  border-radius: 0.25rem;
+}
+
+.flash-notice {
+  color: #24503b;
+  background: #edf7f0;
+}
+
+.flash-alert {
+  color: #812c2c;
+  background: #fff0f0;
+}
+
+:focus-visible {
+  outline: 3px solid #245b8a;
+  outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  .cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .header-content {
+    align-items: flex-start;
+  }
+
+  main {
+    padding-block: 1.5rem;
+  }
+}

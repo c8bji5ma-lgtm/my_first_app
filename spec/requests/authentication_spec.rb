@@ -17,12 +17,12 @@ RSpec.describe "User authentication", type: :request do
     expect(response).to have_http_status(:ok)
   end
 
-  it "registers a user and redirects to the protected root" do
+  it "registers a user and redirects to root showing the home page" do
     expect { register_user }.to change(User, :count).by(1)
     expect(response).to redirect_to(root_path)
     follow_redirect!
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("new@example.com")
+    expect(Nokogiri::HTML(response.body).at_css("main h1").text).to eq("ホーム")
   end
 
   it "does not allow registration to grant admin privileges" do
@@ -35,20 +35,31 @@ RSpec.describe "User authentication", type: :request do
     expect(response).to have_http_status(:unprocessable_content)
   end
 
-  it "signs in with valid credentials and redirects to the protected root" do
+  it "signs in with valid credentials and redirects to root showing the home page" do
     user = create(:user, password: password)
     post user_session_path, params: { user: { email: user.email, password: password } }
     expect(response).to redirect_to(root_path)
     follow_redirect!
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(user.email)
+    expect(Nokogiri::HTML(response.body).at_css("main h1").text).to eq("ホーム")
+  end
+
+  it "returns to the stored destination after signing in" do
+    user = create(:user, password: password)
+    get my_page_path
+    expect(response).to redirect_to(new_user_session_path)
+
+    post user_session_path, params: { user: { email: user.email, password: password } }
+    expect(response).to redirect_to(my_page_path)
+    follow_redirect!
+    expect(Nokogiri::HTML(response.body).at_css("main h1").text).to eq("マイページ")
   end
 
   it "rejects invalid login credentials" do
     user = create(:user)
     post user_session_path, params: { user: { email: user.email, password: "incorrect" } }
     expect(response).to have_http_status(:unprocessable_content)
-    get root_path
+    get home_path
     expect(response).to redirect_to(new_user_session_path)
   end
 
@@ -56,13 +67,20 @@ RSpec.describe "User authentication", type: :request do
     user = create(:user, password: password)
     post user_session_path, params: { user: { email: user.email, password: password } }
     delete destroy_user_session_path
-    expect(response).to redirect_to(root_path)
-    get root_path
+    expect(response).to have_http_status(:see_other)
     expect(response).to redirect_to(new_user_session_path)
+    follow_redirect!
+    expect(Nokogiri::HTML(response.body).at_css("[role='status']").text).to eq(I18n.t("devise.sessions.signed_out"))
+
+    get home_path
+    expect(response).to redirect_to(new_user_session_path)
+    get root_path
+    expect(response).to have_http_status(:ok)
+    expect(Nokogiri::HTML(response.body).at_css("main h1").text).to eq("OshiLog")
   end
 
   it "redirects unauthenticated visitors to sign-in" do
-    get root_path
+    get home_path
     expect(response).to redirect_to(new_user_session_path)
   end
 end

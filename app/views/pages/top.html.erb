@@ -1,0 +1,25 @@
+<% content_for :title, "トップ | OshiLog" %>
+
+<section class="top-intro">
+  <h1>OshiLog</h1>
+  <p>推し活を「記録する・振り返る・可視化する」サービスです。</p>
+  <div class="actions">
+    <%= link_to "ログイン", new_user_session_path, class: "button" %>
+    <%= link_to "新規登録", new_user_registration_path, class: "button button-secondary" %>
+  </div>
+</section>
+
+<div class="cards">
+  <section class="card">
+    <h2>記録</h2>
+    <p>推し活の活動や思い出を記録します。</p>
+  </section>
+  <section class="card">
+    <h2>振り返り</h2>
+    <p>活動履歴を見返し、これまでの推し活を振り返ります。</p>
+  </section>
+  <section class="card">
+    <h2>可視化</h2>
+    <p>活動回数や支出、活動傾向をデータで確認します。</p>
+  </section>
+</div>

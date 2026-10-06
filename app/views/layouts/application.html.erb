@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
   <head>
-    <title><%= content_for(:title) || "My App" %></title>
+    <title><%= content_for(:title) || "OshiLog" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="My App">
+    <meta name="application-name" content="OshiLog">
     <meta name="mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
@@ -24,12 +24,15 @@
   </head>
 
   <body>
-    <% if notice.present? %>
-      <p role="status"><%= notice %></p>
-    <% end %>
-    <% if alert.present? %>
-      <p role="alert"><%= alert %></p>
-    <% end %>
-    <%= yield %>
+    <header class="site-header">
+      <div class="page-width header-content">
+        <%= link_to "OshiLog", root_path, class: "site-brand" %>
+        <%= render "shared/global_navigation" %>
+      </div>
+    </header>
+    <%= render "shared/flash" %>
+    <main class="page-width">
+      <%= yield %>
+    </main>
   </body>
 </html>
