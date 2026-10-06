@@ -4,7 +4,15 @@ Rails.application.routes.draw do
     get "users/sign_up", to: "devise/registrations#new", as: :new_user_registration
     post "users", to: "devise/registrations#create", as: :user_registration
   end
-  root "authentication#index"
+  root "pages#index"
+  get "home", to: "pages#home", as: :home
+  get "my_page", to: "pages#my_page", as: :my_page
+
+  get "oshis", to: "feature_placeholders#show", as: :oshis, defaults: { feature: "oshis" }
+  get "activities", to: "feature_placeholders#show", as: :activities, defaults: { feature: "activities" }
+  get "activities/new", to: "feature_placeholders#show", as: :new_activity, defaults: { feature: "new_activity" }
+  get "data", to: "feature_placeholders#show", as: :oshi_data, defaults: { feature: "data" }
+  get "profile/edit", to: "feature_placeholders#show", as: :edit_profile, defaults: { feature: "profile" }
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.

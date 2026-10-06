@@ -1,0 +1,15 @@
+<% content_for :title, "マイページ | OshiLog" %>
+
+<h1>マイページ</h1>
+<div class="cards">
+  <section class="card">
+    <h2>推し活データ</h2>
+    <p>活動回数・推し歴・月別活動・カテゴリ割合・支出を確認します。</p>
+    <%= link_to "推し活データを見る", oshi_data_path, class: "button" %>
+  </section>
+  <section class="card">
+    <h2>プロフィール</h2>
+    <p>プロフィールの編集画面へ進みます。</p>
+    <%= link_to "プロフィール編集", edit_profile_path, class: "button" %>
+  </section>
+</div>
