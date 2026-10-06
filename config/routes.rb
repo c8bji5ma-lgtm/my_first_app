@@ -12,6 +12,7 @@ Rails.application.routes.draw do
   resources :oshis, only: [ :new, :create ]
   resources :user_oshis, only: [ :create, :show, :edit, :update ]
   resources :activities
+  resources :subscriptions, only: [ :index, :new, :create, :edit, :update, :destroy ]
   get "data", to: "feature_placeholders#show", as: :oshi_data, defaults: { feature: "data" }
   get "profile/edit", to: "feature_placeholders#show", as: :edit_profile, defaults: { feature: "profile" }
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html

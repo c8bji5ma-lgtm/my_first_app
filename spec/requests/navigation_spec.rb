@@ -62,6 +62,14 @@ RSpec.describe "Global navigation and feature destinations", type: :request do
       post user_session_path, params: { user: { email: user.email, password: "password123" } }
     end
 
+    it "links the data preparation page to fixed costs without changing the profile page" do
+      get oshi_data_path
+      expect(document.at_css("main a[href='#{subscriptions_path}']").text).to eq("固定費を管理する")
+      expect(document.at_css("main").text).to include("準備中")
+      get edit_profile_path
+      expect(document.css("main a[href='#{subscriptions_path}']")).to be_empty
+    end
+
     it "shows a Devise login notice once between the header and main" do
       follow_redirect!
 
