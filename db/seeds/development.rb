@@ -1,5 +1,16 @@
-# Guard direct loads independently of db/seeds.rb.
-return unless Rails.env.development?
+# Ownership contract: demo@example.com, multi@example.com, light@example.com,
+# empty@example.com and admin@example.com are reserved development seed identities.
+# Their password, admin flag, Profile and defined associations are reconciled to
+# canonical values, even when these reserved records already exist.
+# Oshi keys are (name, oshi_type, created_by_user), with the creator being the
+# reserved demo or multi user defined below. Alias keys are (oshi, alias_name).
+# UserOshi keys are (reserved user, oshi); Activity and Subscription keys are
+# (reserved user, defined title/name including the 【デモ】 prefix).
+# Other records, including undefined keys under reserved users, are not changed.
+# On managed records, only filenames starting with seed- are managed images.
+# Manual images are retained, including a manual has_one image in place of a seed.
+# Class definitions are loadable for fixed-date tests; only automatic execution
+# is development-only (independently of the guard in db/seeds.rb).
 
 module DevelopmentSeeds
   class Dataset
@@ -10,6 +21,10 @@ module DevelopmentSeeds
     end
 
     def call
+      raise ArgumentError, "Run the dataset outside an existing DB transaction" if ActiveRecord::Base.connection.transaction_open?
+
+      @image_definitions = []
+      # Phase 1: database records and links commit before any file operations.
       ActiveRecord::Base.transaction do
         create_users
         create_oshis
@@ -17,15 +32,22 @@ module DevelopmentSeeds
         create_activities
         create_subscriptions
       end
-      puts "Development seed completed (reference date: #{@date})."
-      puts "Demo accounts:"
-      @users.each_value { |user| puts "#{user.email} / password123" }
-      puts "Users: #{@users.size}, Oshis: #{@oshis.size}"
-      puts "Activities: #{Activity.where(user: @users.values).count}"
-      puts "Subscriptions: #{Subscription.where(user: @users.values).count}"
+      # Phase 2 is retryable, not atomic with Phase 1. Errors propagate; the
+      # canonical DB records remain committed for the next seed run to repair.
+      @image_definitions.each { |record, attribute, filenames| sync_images(record, attribute, filenames) }
+      report if Rails.env.development?
     end
 
     private
+
+      def report
+        puts "Development seed completed (reference date: #{@date})."
+        puts "Demo accounts:"
+        @users.each_value { |user| puts "#{user.email} / password123" }
+        puts "Users: #{@users.size}, Oshis: #{@oshis.size}"
+        puts "Activities: #{Activity.where(user: @users.values).count}"
+        puts "Subscriptions: #{Subscription.where(user: @users.values).count}"
+      end
 
       def upsert(record, attributes)
         record.assign_attributes(attributes)
@@ -43,7 +65,7 @@ module DevelopmentSeeds
           @users[key] = user
           profile = upsert(user.profile || user.build_profile,
             display_name: name, introduction: key == :demo ? "推し活の記録を楽しんでいます。" : nil)
-          sync_images(profile, :profile_image, key == :demo ? [ "seed-flowers.jpg" ] : [])
+          @image_definitions << [ profile, :profile_image, key == :demo ? [ "seed-flowers.jpg" ] : [] ]
         end
       end
 
@@ -56,7 +78,7 @@ module DevelopmentSeeds
           [ "SOL", "アーティスト", "SOL RECORDS", "approved", :multi ],
           [ "OTHER PENDING", "アイドル", "ORBIT PROJECT", "pending", :multi ]
         ].each do |name, type, affiliation, status, owner|
-          # The creator distinguishes unrelated same-name masters.
+          # This complete key is reserved; unrelated same-name masters are untouched.
           record = Oshi.find_or_initialize_by(name: name, oshi_type: type, created_by_user: @users.fetch(owner))
           @oshis[name] = upsert(record, affiliation: affiliation, status: status)
         end
@@ -79,7 +101,7 @@ module DevelopmentSeeds
           definitions.each do |name, started, ended, image|
             record = @users.fetch(key).user_oshis.find_or_initialize_by(oshi: @oshis.fetch(name))
             upsert(record, started_period: started, ended_period: ended)
-            sync_images(record, :representative_image, Array(image))
+            @image_definitions << [ record, :representative_image, Array(image) ]
           end
         end
       end
@@ -98,7 +120,7 @@ module DevelopmentSeeds
         Activities::Save.call(activity: record,
           attributes: { occurred_on: date, activity_type: category, amount: amount, place: place, memo: memo },
           oshi_ids: names.map { |name| @oshis.fetch(name).id })
-        sync_images(record, :images, images)
+        @image_definitions << [ record, :images, images ]
       end
 
       def create_activities
@@ -199,13 +221,18 @@ module DevelopmentSeeds
         attached = record.reload.public_send(attribute) if removed
         filenames.each do |filename|
           path, checksum = desired.fetch(filename)
-          next if existing.any? { |item| !item.destroyed? && item.blob.filename.to_s == filename && item.blob.checksum == checksum }
+          match = existing.find { |item| !item.destroyed? && item.blob.filename.to_s == filename && item.blob.checksum == checksum }
+          if match
+            # A failed after-commit upload can leave a valid attachment without
+            # its file. Retry that upload without creating another blob/link.
+            match.blob.upload(StringIO.new(File.binread(path))) unless match.blob.service.exist?(match.blob.key)
+            next
+          end
           next if attached.is_a?(ActiveStorage::Attached::One) && attached.attached?
-          # Upload occurs after the outer transaction commits; keep the IO open.
           attached.attach(io: StringIO.new(File.binread(path)), filename: filename, content_type: "image/jpeg")
         end
       end
   end
 end
 
-DevelopmentSeeds::Dataset.new.call
+DevelopmentSeeds::Dataset.new.call if Rails.env.development?
