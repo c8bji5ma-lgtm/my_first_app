@@ -103,18 +103,16 @@ RSpec.describe "Global navigation and feature destinations", type: :request do
       end
     end
 
-    {
-      "/profile/edit" => "プロフィール編集"
-    }.each do |path, title|
-      it "provides a protected preparation page at #{path}" do
-        get path
+    it "links my page to the implemented protected profile editor" do
+      get my_page_path
+      expect(document.at_css("main a[href='#{edit_profile_path}']").text).to eq("プロフィール編集")
+      get edit_profile_path
 
-        expect(response).to have_http_status(:ok)
-        expect(document.at_css("main h1").text).to eq(title)
-        expect(document.at_css("title").text).to eq("#{title} | OshiLog")
-        expect(document.at_css("main").text).to include("準備中")
-        expect(document.css("main form")).to be_empty
-      end
+      expect(response).to have_http_status(:ok)
+      expect(document.at_css("main h1").text).to eq("プロフィール編集")
+      expect(document.at_css("title").text).to eq("プロフィール編集 | OshiLog")
+      expect(document.at_css("main").text).not_to include("準備中")
+      expect(document.at_css("main form")["action"]).to eq(profile_path)
     end
 
     it "links my page to the implemented protected data page" do
