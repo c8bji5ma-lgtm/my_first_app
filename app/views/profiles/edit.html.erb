@@ -1,0 +1,25 @@
+<% content_for :title, "プロフィール編集 | OshiLog" %>
+<h1>プロフィール編集</h1>
+<section class="card">
+  <h2>あなたのプロフィール</h2>
+  <%= attachment_image_tag @profile_image, alt: "現在のプロフィール画像", class: "representative-image" %>
+  <%= render "shared/validation_errors", resource: @profile %>
+  <%= form_with model: @profile, url: profile_path, method: :patch do |f| %>
+    <div class="form-field">
+      <%= f.label :display_name, "表示名（必須）" %>
+      <%= f.text_field :display_name, required: true, maxlength: 50, aria: { invalid: @profile.errors[:display_name].any?, describedby: "display-name-help" } %>
+      <p id="display-name-help">50文字以内で入力してください。</p>
+    </div>
+    <div class="form-field">
+      <%= f.label :introduction, "自己紹介" %>
+      <%= f.text_area :introduction, rows: 5, aria: { invalid: @profile.errors[:introduction].any? } %>
+    </div>
+    <div class="form-field">
+      <%= f.label :profile_image, "プロフィール画像" %>
+      <%= f.file_field :profile_image, accept: "image/jpeg,image/png,image/webp", aria: { invalid: @profile.errors[:profile_image].any?, describedby: "profile-image-help" } %>
+      <p id="profile-image-help">JPEG・PNG・WebP、10 MiB以下。変更する場合だけ選択してください。入力エラー後は画像を再選択してください。</p>
+    </div>
+    <%= f.submit "プロフィールを保存", class: "button" %>
+  <% end %>
+</section>
+<p><%= link_to "マイページへ戻る", my_page_path %></p>
