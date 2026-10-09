@@ -19,7 +19,8 @@ RSpec.describe ImagesHelper, type: :helper do
     profile.profile_image.attach(image_upload)
     profile.save!
     html = helper.attachment_image_tag(profile.profile_image, alt: "プロフィール画像")
-    expect(html).to include(profile.profile_image.blob.signed_id, 'alt="プロフィール画像"')
+    expect(html).to include(protected_image_path(profile.profile_image.attachment), 'alt="プロフィール画像"')
+    expect(html).not_to include(profile.profile_image.blob.signed_id)
     expect(html).not_to include("image_placeholder", "representations")
   end
 
@@ -27,6 +28,6 @@ RSpec.describe ImagesHelper, type: :helper do
     activity = build(:activity)
     activity.images.attach(image_upload)
     activity.save!
-    expect(helper.attachment_image_tag(activity.images.first)).to include(activity.images.first.blob.signed_id)
+    expect(helper.attachment_image_tag(activity.images.first)).to include(protected_image_path(activity.images.first))
   end
 end

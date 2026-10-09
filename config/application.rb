@@ -11,6 +11,9 @@ module MyApp
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.1
 
+    # Images are served only through our owner-authorized attachment endpoint.
+    config.active_storage.draw_routes = false
+
     config.generators do |generators|
       generators.test_framework :rspec
       generators.fixture_replacement :factory_bot, dir: "spec/factories"

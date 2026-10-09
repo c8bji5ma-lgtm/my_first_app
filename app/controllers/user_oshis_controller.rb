@@ -34,6 +34,11 @@ class UserOshisController < ApplicationController
   def update
     attributes = user_oshi_params
     attributes.delete(:representative_image) if attributes[:representative_image].blank?
+    if attributes.key?(:representative_image) && !attributes[:representative_image].is_a?(ActionDispatch::Http::UploadedFile)
+      @user_oshi.errors.add(:representative_image, "はファイルとして選択してください。")
+      render :edit, status: :unprocessable_content
+      return
+    end
     if @user_oshi.update(attributes)
       redirect_to oshis_path, notice: "推し情報を更新しました。", status: :see_other
     else

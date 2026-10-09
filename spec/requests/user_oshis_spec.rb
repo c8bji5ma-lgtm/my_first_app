@@ -136,7 +136,7 @@ RSpec.describe "Managing personal oshis", type: :request do
       [ user_oshi_path(record), edit_user_oshi_path(record) ].each do |path|
         get path
         expect(response).to have_http_status(:ok)
-        expect(document.at_css("main img")["src"]).to include(record.representative_image.blob.signed_id)
+        expect(document.at_css("main img")["src"]).to eq(protected_image_path(record.representative_image.attachment))
         expect(document.at_css("main img")["src"]).not_to include("representations")
       end
     end
@@ -183,13 +183,13 @@ RSpec.describe "Managing personal oshis", type: :request do
       record = create(:user_oshi, user: user)
       record.representative_image.attach(image_upload)
       original_id = record.representative_image.blob.id
-      original_signed_id = record.representative_image.blob.signed_id
+      original_image_path = protected_image_path(record.representative_image.attachment)
       update_oshi(record, started_period: "2020",
         representative_image: Rack::Test::UploadedFile.new(Rails.root.join("spec/fixtures/files/invalid.txt"), "text/plain"))
       expect(response).to have_http_status(:unprocessable_content)
       expect(document.at_css("main h1").text).to eq("推し編集")
       expect(document.css(".validation-errors[role='alert']").text).to include("JPEG")
-      expect(document.at_css("main img")["src"]).to include(original_signed_id)
+      expect(document.at_css("main img")["src"]).to eq(original_image_path)
       expect(record.reload.started_period).to eq("2023")
       expect(record.representative_image.blob.id).to eq(original_id)
     end

@@ -1,0 +1,17 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "File Access",
+      "warning_code": 16,
+      "fingerprint": "4fc3ea635533d840d0dff1b6ad377ac3e0e87f0d3a44927c5fad0eee92bc1872",
+      "check_name": "SendFile",
+      "message": "Parameter value used in file name",
+      "file": "app/controllers/images_controller.rb",
+      "line": 11,
+      "confidence": "Weak",
+      "cwe_id": [22],
+      "note": "Issue #50: ユーザーがBrakeman 8.1.0の警告1件・終了コード3・本フィンガープリントと画像保護RSpec 33件成功を手動確認し、この1件の除外を明示承認。未認証を拒否し、Profile・UserOshi・Activityのuser_idと添付関連名で認可した後にDB上のBlobキーだけをDiskService.path_forへ渡す。Rails 8.1.4のpath_forはドットセグメント・保存ルート外を拒否する。HTTPテストで他ユーザー、削除済み添付・親、不正キー、欠落ファイル、標準URL迂回、Blob再添付の拒否を確認。ユーザー入力をパスへ直接連結しない点を根拠に個別除外する。残存リスク: 保存領域内の悪意あるシンボリックリンク、認可から配信までの競合、本番プロキシ・過去のキャッシュは未検証。保存領域の信頼性を維持し、配信処理・Rails・ストレージ・権限管理の変更時は再評価する。--exit-on-warnと他警告の検出は維持する。"
+    }
+  ],
+  "brakeman_version": "8.1.0"
+}
